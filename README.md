@@ -1,189 +1,192 @@
 # CampusFest Growth Center: Attendee Growth (Challenge A)
 
-**Ruchi Gupta** · RISA Labs Growth APM assignment
-
-Goal: grow verified attendance at a Tier-1 college fest. City: **Bengaluru**.
+**Ruchi Gupta** (23MT10043, IIT Kharagpur) · RISA Labs Growth APM assignment · CampusFest Bengaluru, April 2027
 
 | Deliverable | Where |
 |---|---|
-| 3-slide strategy PDF | `Ruchi_Gupta_RISA_Growth_Strategy.pdf` |
-| Growth Center (dashboard, campaign and task manager, AI analyst) | `index.html` + `api/chat.js`, live at **https://campusfest-growth-center-eight.vercel.app** |
-| Target model (all formulas live) | `Target_Model_Ruchi_Gupta.xlsx`: tabs Target Model, Audiences & City, Slide 2 Bets, Slide 3 Signals |
-| Source code | https://github.com/ruchigupta22/campusfest-growth-center |
+| 3-slide strategy | `Ruchi_Gupta_RISA_Growth_Strategy.pdf` |
+| Growth Center (dashboard, campaign and task manager, AI analyst) | **https://campusfest-growth-center-eight.vercel.app** · code: https://github.com/ruchigupta22/campusfest-growth-center |
+| Model behind the slides (live formulas) | `Target_Model_Ruchi_Gupta.xlsx` |
+| Chatbot test results | Section 3 below |
 
 ---
 
-## 1. Headline
+## 1. Check this in 5 minutes
 
-Last edition reached 2,050 verified visitors on ₹2.74L of spend. The plan targets these numbers:
+1. **Open the app.** The header date picker sets "data as of". Move it to **1 Mar 2025**: everything recalculates using only data up to that day, including the target version that was active then (goal 1,800, not 2,200).
+2. **Diagnose → click "Paid Social".** You see cost per registration rising against its scale and stop lines, plus an automatic diagnosis (fatigue, weak show-up, opt-outs).
+3. **Ask the AI analyst:** "Which channel should we cut, and why?" Then: "Create a task for its owner." A card appears; nothing is saved until you click **Confirm**. The task then shows in **Campaigns & tasks**.
+4. **Change the data:** Data → add a ₹50,000 Paid Social entry, then ask "What is total spend now?" (it answers ₹3,24,000). Click "Remove last" to undo.
+5. **Ask something the data can't answer**, such as "How many came from Christ University?". It says the data doesn't record colleges instead of guessing.
 
-| | Base | Stretch | Moonshot |
-|---|---|---|---|
-| Verified visitors | **2,578** (+26%) | 3,009 (+47%) | 3,500 (+71%) |
-| Spend | ₹3L | ₹3L | ₹3.4L |
+**Rubric map:**
 
-The extra visitors come from two places:
-- **Moving budget** from Paid Social and Creators into referrals, college club passes and ambassadors. This adds about 410 visitors.
-- **Fixing leaks after registration:** promoting the waitlist, reconfirming early registrants and following up abandoned forms. This adds 116 visitors for ₹10K.
+| Criterion | Where |
+|---|---|
+| Ambition and quantitative reasoning | Slide 1; Excel tabs Target Model and Audiences & City |
+| Ideas, prioritisation and trade-offs | Slide 2; Excel tab Slide 2 Bets |
+| Experimentation and adaptability | Slide 3; Excel tab Slide 3 Signals; app → Decide |
+| Dashboard and management | App → Overview, Diagnose, Decide, Campaigns & tasks |
+| AI chatbot | App → AI Growth Analyst; test results in Section 3 |
+| Ownership and communication | This README: decisions, setup, limitations |
 
 ---
 
-## 2. Data cleaning
+## 2. Decisions I made, and why
+
+1. **I added a fact-check to the chatbot after it gave a wrong number.** In testing, the fast model got a correct tool result (1,905 Day 1 check-ins) and wrote 1,505 in its answer. Now every number in an answer is checked against what the tools computed. A mismatch makes the AI correct itself, and if it can't, the answer is flagged "couldn't verify".
+2. **I added a 4-week ramp-up rule.** Replaying 1 March showed my own thresholds would have flagged Student Referrals as "Stop". It went on to become the cheapest channel. New channels now get 4 weeks of spend before a Stop.
+3. **I price every extra rupee at 2× last year's cost.** Scaling referrals and clubs to 2–2.6× their 2025 spend will not stay as cheap. The commitment of 2,578 already includes this penalty.
+4. **I commit to the base case, not the stretch.** 2,578 is the commitment. I'd staff and book the venue for 3,009, and fund the moonshot (+491) only if its pilots pass by 2 March. **Downside:** if channels saturate (3× cost), the show-up fixes deliver nothing and the cuts hurt more, all at once, the plan still reaches **2,179 (+6%)**.
+5. **I cut before adding.** Paid Social and Creators took 55% of spend for 25% of verified visitors. Cutting them frees ₹77K for channels that got cheaper as they grew.
+6. **I treat correlations as hypotheses.** "Early registrants show up less" and "brochure downloaders show up more" may be selection effects, not causes. That's why the show-up engine starts as an A/B test against a holdout half (about 613 each), not a blanket rollout.
+7. **I kept the API key on the server.** GitHub's secret scanning blocked an early attempt to put it in the code. The key now lives only in a server function, which also checks the request's origin, rate-limits each visitor and caps response length.
+
+---
+
+## 3. Chatbot evaluation (live site, run on 27 Nov 2026)
+
+**Result: 31 of 32 questions passed (97%)**, run against the live site with Gemini Flash-Lite.
+
+Each test has an expected answer computed separately in Python from the raw dataset. A question passes only if the answer contains the right number (or, for the 'can't answer' tests, says the data doesn't have it without inventing a figure).
+
+| Category | Passed |
+|---|---|
+| Fact | 7 / 7 |
+| Calculation | 5 / 5 |
+| Comparison | 3 / 3 |
+| As-of date | 4 / 4 |
+| Follow-up | 3 / 4 |
+| Can't answer | 4 / 4 |
+| Changed data | 2 / 2 |
+| Action | 2 / 2 |
+| Diagnosis | 1 / 1 |
+
+Median answer time: 3 s. Answers marked "✓ Numbers checked": 32 of 32.
+
+**The one failure:** test 21 answered ₹136.77; the true value is ₹136.76 (₹93,000 ÷ 680). The fact-check tolerates rounding differences, so it let a ₹0.01 slip through. Next fix: round money to whole rupees in tool outputs, so there is nothing to mis-round.
+
+**Fixes that came from earlier testing:**
+- The model copied 1,905 as 1,505 → added the automatic number fact-check with one retry.
+- Thresholds flagged Student Referrals as Stop on 1 Mar → added the 4-week ramp-up rule.
+- Weeks with no spend looked free → cost per registration uses two-week windows.
+
+Full question list and answers: `EVAL.md`.
+
+---
+
+## 4. Data cleaning
 
 These rules follow the dataset's own read-me.
 
-- **Duplicates removed** by stable ID: 20 check-ins, 4 status rows and 2 spend rows.
-- **People counted:** only `external` people count toward goals. That excludes 40 internal, 10 staff and 10 test people.
-- **Verified visitor:** a distinct person with at least one `admitted` + `verified` check-in. Denied and pending check-ins don't count, and a person who came on both days counts once. Walk-ins (125) count as visitors but have no campaign.
-- **Registration status:** taken from the latest history row on or before the selected date.
-- **No future data:** every number is computed **as of** the selected date (end of day, IST), so nothing from later leaks into an earlier view.
-- **Reach, impressions and clicks** are anonymous platform counts and are never summed as people.
+- **Duplicates removed** by stable ID: 20 check-ins, 4 status rows, 2 spend rows.
+- **Only `external` people count.** That excludes 40 internal, 10 staff and 10 test people.
+- **Verified visitor:** a distinct person with at least one `admitted` + `verified` check-in. Each person counts once across both days, and walk-ins (125) count too.
+- **Status as of a date:** the latest history row on or before that day.
+- **No future data in past views:** e.g. spend as of 12 Apr 2025 is ₹2,76,500, more than the final ₹2,74,000, because refunds were posted after the fest.
+- **Reach, impressions and clicks** are anonymous counts and are never summed as people.
 
----
+**Definitions used everywhere:**
+- **Show-up rate** = verified visitors ÷ all registrations (68.8% in 2025).
+- **Confirmed show-up** = verified visitors ÷ confirmed registrations (77%).
 
-## 3. Key findings (computed from the data)
+## 5. Key findings
 
-1. **Paid channels were inefficient.** Paid Social and Creators took 55% of spend but brought 27% of registered visitors, and only 50% of their registrants showed up.
-2. **Paid Social wore out.** Cost per registration was about ₹130 in February and rose to ₹370–660 in late March.
-3. **Peer channels got cheaper as they grew.** Referrals fell from ₹177 to ₹29 per registration; college partnerships fell to ₹32–74 from mid-March.
-4. **The waitlist was never used.** 88 people stayed on the waitlist while 183 people cancelled, and only one waitlisted person was ever promoted.
-5. **Reminder emails didn't work.** Nurture emails had no effect on show-up (68.9% vs 68.7%).
-6. **Two actions do predict show-up:**
-   - brochure download: 74.7% vs 61.9%
-   - asking a question: 79.4% vs 68.0%
-7. **Early registrants are less reliable.** Confirmed people who registered more than 28 days ahead showed up 73.9% of the time, against 80.6% for later registrants.
-8. **Forms were abandoned.** 275 people started the registration form and never finished it.
+1. **Paid Social and Creators:** 55% of spend, 25% of verified visitors, 50% show-up.
+2. **Paid Social wore out:** about ₹130 per registration in February, rising to ₹370–660 in late March.
+3. **Referrals and college partnerships got cheaper as they grew:** referrals fell from ₹177 to ₹29 per registration.
+4. **The waitlist was unused:** 88 people stayed waitlisted while 183 cancelled, and only one was ever promoted.
+5. **Nurture emails did nothing:** show-up was 68.9% with them and 68.7% without.
+6. **Hypotheses (correlation only):**
+   - Brochure downloaders showed up 74.7% vs 61.9%.
+   - Question askers showed up 79.4% vs 68.0%.
+   - Confirmed early registrants (more than 28 days ahead) showed up 73.9% vs 80.6% for later registrants.
+7. **275 people abandoned the registration form.**
 
----
+## 6. Model and assumptions (all in the Excel file)
 
-## 4. The model and its assumptions
+- **Channel plan:** extra spend at 2× (base) or 1.3× (stretch) the 2025 cost per visitor; cut spend loses visitors at 1.5×.
+- **Leak fixes:**
+  - waitlist: 88 × 77% × 50%
+  - reconfirmation: 1,331 × 6.7 pts × 50%
+  - form recovery: 275 × 68.8% × 20%
+  
+  Together they add +116 in the base case.
+- **Bridge:** 2,050 + 702 (bets) − 174 (cuts) = 2,578. Budget: ₹2.74L + ₹103K − ₹77K = ₹3L.
+- **Moonshot (assumptions only):**
+  - competitions: 15 × 12 teams × 5 × 50% new × 90% show-up = +405
+  - metro shuttle: 575 no-shows × 30% travel × 50% fixed = +86. The 30% should be tested first with a short student survey.
+- **Market:** 1,107 colleges in Bengaluru Urban (AISHE 2022-23) × 433 students per college (Karnataka, AISHE 2023-24) ≈ 4.8 lakh students. Segment sizes use national discipline shares, so they are estimates.
+- **City constraints:**
+  - Exams start in late April, so the fest is in the first half of April 2027.
+  - Rival fests were on early-April weekends in 2026 (PES 3–4 Apr, Presidency 10–11 Apr); confirm their 2027 dates.
+  - Bengaluru is the world's 2nd most congested city (TomTom 2025), so the venue goes near the metro.
+  - The venue must handle 1,745 (commit) to 2,370 (moonshot) people on the peak day.
 
-**Base and stretch calculation.** Each channel's visitors are recalculated from its change in spend:
-- Extra spend is priced at **2× (base)** or **1.3× (stretch)** last year's average cost per visitor for that channel. This builds in diminishing returns.
-- Cut spend loses visitors at **1.5×** the channel's average cost per visitor, because the spend being cut was the least efficient spend.
+## 7. Prioritisation and thresholds
 
-**Leak fixes:**
+- **Ranking score:** extra visitors × confidence ÷ extra ₹K. Confidence is 70% for the first three bets (direct 2025 evidence), 50% for search and community (capped by search demand) and 60% for ambassadors (high variance).
+- **Ranking:**
+  1. Show-up engine (8.1)
+  2. Referrals (5.1)
+  3. College club passes (4.3)
+  4. Search and community (2.9)
+  5. Ambassadors (2.8)
+- **Thresholds:** per bet, taken from 2025 data. Review every Monday, judge a channel only after 30 registrations, and stop only after 2 bad weeks (with the ramp-up rule above).
+- **Gates (2027):** each gate has an owner from the 2025 campaign team.
 
-| Fix | Calculation | Base | Stretch |
-|---|---|---|---|
-| Waitlist promotion | 88 × 77% × (50% base / 100% stretch) | 34 | 68 |
-| Reconfirming early registrants | 1,331 × 6.7 pts × (50% / 100%) | 45 | 89 |
-| Abandoned-form follow-up | 275 × 68.8% × (20% / 40%) | 38 | 76 |
+  | Date | Registrations needed | Owner | Decision |
+  |---|---|---|---|
+  | 31 Jan | – | Dev, Meera | Show-up flows built, ambassadors recruited |
+  | 16 Feb | ≥ 781 | Arjun | Paid burst on track or ended |
+  | 2 Mar | ≥ 1,468 | Meera | Club pilot result, moonshot go/no-go |
+  | 23 Mar | ≥ 2,414 | Dev | Held-back 10% to the top bet |
+  | 6 Apr | ≥ 3,290 | Arjun | Final reconfirmations, venue lanes |
 
-**Moonshot.** Two new bets with no data behind them, so every input is an assumption:
-- **Inter-college competitions:** 15 × 12 teams × 5 members × 50% new × 90% show-up = **+405**
-- **Metro shuttle:** 575 no-shows × 30% caused by travel × 50% fixed = **+86**. The 30% is untested, and a student survey would be its first test.
+## 8. The Growth Center
 
-**Market size:**
-- Bengaluru Urban has 1,107 colleges (AISHE 2022-23). Karnataka averages 433 students per college (AISHE 2023-24), giving about 4.8 lakh students.
-- Segment sizes apply national AISHE 2021-22 undergraduate discipline shares, so they are **estimates**.
+- **Overview:** KPIs against the target version active on the selected date, the funnel, a projection before the event, weekly charts and computed insights.
+- **Diagnose:** a sortable campaign table; clicking a campaign shows its trend against its lines and an automatic bottleneck diagnosis.
+- **Decide:** scale, change, stop or ramp-up signals with editable thresholds, a "Create task" button, a budget what-if tool and budget planning.
+- **Campaigns & tasks:** edit owner, status, budget and dates; create and track tasks.
+- **Data:** add spend entries, import an updated .xlsx, back up, reset, plus data-quality checks and definitions.
 
-**Bengaluru constraints:**
-- **Exams:** autonomous colleges hold exams from late April, so the fest has to happen by mid-April.
-- **Rival fests:** avoid the weekends of PES Aatmatrisha (3–4 Apr 2026) and Presidency Invincia (10–11 Apr 2026).
-- **Traffic:** Bengaluru was the world's 2nd most congested city in 2025 (TomTom), so the venue should be near the metro (Namma Metro: 96.1 km, 83 stations).
+Edits are saved in the browser, and every change recalculates every view and the AI's answers.
 
----
+**How the AI analyst works:**
+- **Tools, not summaries:** it answers through 12 tools that compute from the cleaned records as of the selected date (`get_overview`, `get_campaign_metrics`, `get_weekly_trend`, `get_threshold_status`, `get_insights`, a flexible `query_data`, `list_tasks`, `list_campaign_plans`, `simulate_budget_shift`, `calculate`, `propose_task`, `propose_campaign_update`).
+- **Confirmation:** actions only create a card; nothing is saved until you confirm.
+- **Fact-check:** every number is checked against the tool results (see Decision 1).
 
-## 5. Prioritisation framework
+**Server function (`api/chat.js`):**
+- holds the Gemini key in an environment variable
+- accepts requests only from this site
+- allows 150 model calls per visitor every 10 minutes
+- caps responses at 1,024 tokens
+- falls back to a second model if the first fails
 
-**Score = extra visitors (base) × confidence ÷ extra spend in ₹K.** This is confidence-weighted visitors per ₹1,000.
+The AI model is Gemini Flash-Lite. It answers in about 1 second per call, against 13–40 seconds for the larger Flash model. Accuracy is protected by the fact-check.
 
-| Bet | Confidence | Why |
-|---|---|---|
-| Show-up engine, referrals, college club passes | 70% | Direct evidence in last year's data |
-| Search and community | 50% | Capped by how many people search |
-| Ambassadors | 60% | Results varied a lot between ambassadors |
+## 9. Setup
 
-The resulting ranking:
-1. Show-up engine (score 8.1)
-2. Referrals (5.1)
-3. College club passes (4.3)
-4. Search and community (2.9)
-5. Ambassadors (2.8)
+- **Vercel:** import the GitHub repo (preset "Other", no build step), add `GEMINI_API_KEY`, and deploy.
+- **Locally:** open `index.html`. The dashboard works fully; the analyst needs a key in ⚙ settings.
 
-**Cut or rejected:** Paid Social always-on, Creators in the early weeks, and generic email blasts.
+## 10. Tools used
 
----
+I built this with Claude as a coding and analysis partner: Python and pandas for the analysis, plain HTML, CSS and JavaScript for the app (charts are inline SVG, SheetJS is used only for .xlsx import), and Gemini for the analyst. The decisions in Section 2 are mine; I checked every number in the deck against the source data and the Excel model.
 
-## 6. Thresholds (Slide 3)
+**Sources:**
+- AISHE 2021-22, 2022-23 and 2023-24 (Ministry of Education)
+- TomTom Traffic Index 2025
+- Namma Metro figures (Nov 2026)
+- 2026 fest dates from the PES, Presidency, ABBS and ISME listings
 
-- **Review cycle:** every Monday.
-- **Minimum data:** don't judge a channel before it has 30 registrations.
-- **Measure:** cost per registration over the last two complete weeks combined. Spend is posted in lumps, so single weeks are noisy.
-- **Ramp-up rule:** a channel with fewer than 4 weeks of spend shows "Ramp-up" instead of "Stop". Without this rule, Student Referrals would have been flagged Stop on 1 March, yet it became the cheapest channel by late March.
-- **Threshold lines** come from last year's data. For example, Paid Social's ₹130 scale line is what it cost while it was working.
-- **Checkpoints** follow last year's registration pace: 22% of registrations by 16 Feb, 42% by 2 Mar, 69% by 23 Mar and 94% by 6 Apr.
+## 11. Known limitations
 
----
-
-## 7. The Growth Center app
-
-**Tabs:**
-- **Overview:** KPIs against the target version active on that date, the funnel, a projection when the date is before the event, weekly spend and registrations, and computed insights.
-- **Diagnose:** a sortable campaign table. Clicking a row shows that campaign's weekly cost-per-registration trend against its scale and stop lines, plus an automatic bottleneck diagnosis.
-- **Decide:** scale, change or stop signals with editable thresholds, a "create task" button for each signal, a budget-shift simulator, and budget planning (planned against spent against the strategy).
-- **Campaigns & tasks:** edit a campaign's owner, status, budget, end date and notes; add campaigns; create, edit and delete tasks with owner, due date, priority and status, plus filters and overdue flags.
-- **Data:**
-  - add marketing activity entries
-  - import an updated workbook (.xlsx) or a backup (.json)
-  - reset to the original data
-  - a data-quality report and metric definitions
-
-**Saving.** Edits are saved in the browser (IndexedDB), so they survive a reload. Every change recalculates every view and the AI analyst's answers.
-
-**AI Growth Analyst.** The chatbot works by **tool calling** on the live data. The model never sees a pre-written summary; it has to call functions that compute from the cleaned records as of the selected date:
-- `get_overview`, `get_campaign_metrics`, `get_weekly_trend`, `get_threshold_status`, `get_insights`
-- `query_data`: a flexible count, sum or average with filters and group-by, for questions the other tools don't cover
-- `list_tasks`, `list_campaign_plans`, `simulate_budget_shift`, `calculate`
-- `propose_task`, `propose_campaign_update`
-
-The rules that keep it honest:
-- **Actions need confirmation.** A proposal only shows a card, and nothing changes until the user clicks **Confirm**.
-- **No invented numbers.** The system prompt forbids made-up figures and requires the analyst to say when the data can't answer.
-- **Follow-ups work.** Questions can refer back to earlier turns.
-- **Automatic fact-check.** After every answer, the app checks each number against the values the tools actually computed. If any number doesn't match, the AI is told which ones and must answer again. If it still can't, the answer shows a visible "couldn't verify" warning. Verified answers show "✓ Numbers checked against the data". This was added after testing caught the fast model copying a correct tool result wrongly.
-
-**Which AI it uses.** Inside Claude it uses Claude automatically. On the hosted site it calls Gemini through a small serverless function, `api/chat.js`. The API key is stored only as a server environment variable, `GEMINI_API_KEY`, so it is never shipped to the browser or committed to the repo. A user can also paste their own key into ⚙ settings; it stays in their browser.
-
----
-
-## 8. Setup
-
-The app is a static `index.html` with the dataset embedded, plus one serverless function, `api/chat.js`, for the AI analyst.
-
-**Deploy on Vercel:**
-1. Import this GitHub repo at vercel.com/new. Set Framework preset to "Other"; no build step is needed.
-2. Add an environment variable: `GEMINI_API_KEY` = your Google AI Studio key.
-3. Click Deploy.
-
-**Other ways to run it:**
-- **GitHub Pages, or opening `index.html` locally:** the dashboard works fully, but the AI analyst needs a key pasted into ⚙ settings, because there is no server function there.
-
-**Security:** the key never appears in the client code or the git history. GitHub secret scanning blocked an earlier attempt to commit it, which is why the key moved to the server.
-
----
-
-## 9. Tools used
-
-- **Claude:** data analysis (Python and pandas), model building, research, deck, app code and this README. I reviewed the data cleaning, the assumptions and every number against the source data.
-- **Claude Sheets, exported to Excel:** the target model (`Target_Model_Ruchi_Gupta.xlsx`), with live formulas.
-- **Python and pandas:** analysis and data export.
-- **Plain HTML, CSS and JavaScript:** the app. No framework; charts are inline SVG.
-- **SheetJS (CDN):** only used when importing an .xlsx file.
-- **Gemini Flash-Lite (latest) or Claude:** the analyst's AI. Flash-Lite was chosen after testing: about 1 second per call, against 13–40 seconds for the larger Flash model, with accuracy protected by the fact-check.
-
-**Sources:** AISHE 2021-22, 2022-23 and 2023-24 (Ministry of Education); TomTom Traffic Index 2025; Namma Metro (Wikipedia and news, Nov 2026); fest dates from the PES, Presidency, ABBS and ISME listings.
-
----
-
-## 10. Known limitations
-
-- **One past edition.** Channel economics come from a single fictional edition. Scaling spend 2–2.6× on referrals and college clubs is the biggest risk, which is why the base case prices extra spend at 2× cost.
-- **Estimated audiences.** Audience sizes use national discipline shares, not Bengaluru-specific data.
-- **Untested moonshot.** The moonshot bets, and the 30% travel no-show assumption, have not been tested.
-- **Saving is per browser.** Edits live in each viewer's own browser, not on a shared server. A shared database such as Supabase would be the next step.
-- **Simple projection.** Before the event, the projection assumes the last 14 days' registration pace continues, with 0.69 visitors per registration and 125 walk-ins.
-- **Threshold signals use cost per registration only.** Show-up thresholds need check-in data, which exists only after the event.
-- **Inside Claude, backup download doesn't work** (the viewer blocks file downloads). It works on the hosted site.
-- **No rate limiting on the server function.** For a real launch, add per-IP rate limiting to `api/chat.js`.
+- **One edition of data.** Channel economics come from a single fictional edition, and scaling them is the biggest risk (hence the 2× penalty and the downside test).
+- **Estimated segments.** Audience sizes use national discipline shares.
+- **No student input yet.** The moonshot bets and the 30% travel no-show assumption are untested, and a student survey is the first step.
+- **Per-browser saving.** Edits are saved per browser, not on a shared server; a shared database would be next.
+- **Best-effort rate limit.** The limit is per server instance.
+- **Show-up thresholds need check-ins.** Before the fest, the live signals use cost per registration.
