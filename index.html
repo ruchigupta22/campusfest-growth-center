@@ -446,7 +446,7 @@ function wireDecide(){
   document.querySelectorAll("[data-th]").forEach(inp => inp.onchange = async () => { const id = inp.dataset.th; S.edits.thresholds[id] = Object.assign({}, S.edits.thresholds[id], {[inp.dataset.k]: +inp.value}); await saveEdits(); render(); });
   document.querySelectorAll("[data-mktask]").forEach(b => b.onclick = async () => { const c = S.model.campaigns.find(x=>x.campaign_id===b.dataset.mktask); S.edits.tasks.push({id:uid("T"), title:`${b.dataset.act}: ${c.campaign_name} (from threshold review ${S.asOf})`, campaign_id:c.campaign_id, owner:c.owner_name||"", due:addDays(todayISO(),7), priority:b.dataset.act==="Stop"?"High":"Medium", status:"To do", created_by:"dashboard", created_at:new Date().toISOString()}); await saveEdits(); S.tab="execute"; render(); });
   const run = () => { const r = simulateShift({from_campaign:$("#wfFrom").value, to_campaign:$("#wfTo").value, amount:+$("#wfAmt").value, multiplier:+$("#wfMul").value}); $("#wfOut").textContent = r.error || `Moving ${inr(r.amount)} from ${r.from} to ${r.to}: about −${fmt(r.visitors_lost)} visitors from ${r.from} and +${fmt(r.visitors_gained)} at ${r.to}. Net ${r.net_visitors>=0?"+":""}${fmt(r.net_visitors)} verified visitors.`; };
-  $("#wfRun").onclick = run;
+  $("#wfFrom").value = "C02"; $("#wfTo").value = "C05"; $("#wfRun").onclick = run;
   $("#applyStrat").onclick = async () => { Object.entries(STRATEGY_BUDGET).forEach(([id,v]) => S.edits.campaignEdits[id] = Object.assign({}, S.edits.campaignEdits[id], {planned_budget:v})); await saveEdits(); render(); };
 }
 function simulateShift({from_campaign, to_campaign, amount, multiplier}){
