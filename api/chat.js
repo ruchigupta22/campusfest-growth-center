@@ -1,7 +1,7 @@
 // Serverless proxy for the AI Growth Analyst.
 // The Gemini key lives only in the server environment variable GEMINI_API_KEY,
 // so it is never shipped to the browser or committed to the repository.
-const ALLOWED_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-flash-latest"];
+const MODEL_PATTERN = /^gemini-[a-z0-9.\-]{1,40}$/; // only Gemini models; default below
 
 module.exports = async (req, res) => {
   if (req.method === "GET") return res.status(200).json({ ok: Boolean(process.env.GEMINI_API_KEY) });
@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
 
   let body = req.body || {};
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
-  const model = ALLOWED_MODELS.includes(body.model) ? body.model : "gemini-2.5-flash";
+  const model = MODEL_PATTERN.test(String(body.model || "")) ? body.model : "gemini-flash-lite-latest";
   const payload = {
     contents: body.contents,
     systemInstruction: body.systemInstruction,
