@@ -92,7 +92,7 @@ svg text{font-family:inherit}
   <aside id="chat">
     <div class="chat-head"><b>AI Growth Analyst</b><span class="pill grey" id="prov">checking…</span><button class="small" id="btnSettings" title="Settings">⚙</button><button class="small" id="btnClear" title="Clear chat">Clear</button></div>
     <div id="settings" style="display:none;padding:10px 14px;border-bottom:1px solid var(--line)">
-      <div class="note" style="margin-top:0">Inside Claude, the analyst uses Claude automatically. On the hosted site it uses the server-side Gemini connection. You can also paste your own Google AI Studio key; it is stored only in this browser.</div>
+      <div class="note" style="margin-top:0">The analyst uses this site's server-side Gemini connection. Optionally paste your own Google AI Studio key; it is stored only in this browser.</div>
       <div class="form" style="margin-top:8px"><label>Gemini API key<input id="gkey" type="password" placeholder="AIza…"></label><label>Gemini model<input id="gmodel" placeholder="gemini-2.5-flash"></label></div>
       <div class="row" style="margin-top:8px"><button class="small primary" id="saveKey">Save</button></div>
     </div>
@@ -392,7 +392,7 @@ function viewOverview(){
   <div class="card" style="margin-top:14px"><h2>Weekly spend and registrations</h2>${lineBarChart(weeks,{barName:"Spend", lineName:"Registrations", barFmt:v=>"₹"+fmt(v/1000,0)+"K", label:"Weekly spend and registrations"})}</div>
   <div class="card" style="margin-top:14px"><h2>What the data says (computed for ${esc(S.asOf)})</h2>${insights(S.asOf).map(i => `<div class="insight"><b>${esc(i.title)}</b>${esc(i.text)}</div>`).join("")}</div>`;
 }
-const COLS = [["campaign_name","Campaign"],["status","Status"],["spend","Spend","inr"],["share_spend","% spend","pct"],["impressions","Impr.","n"],["ctr","CTR","pct"],["leads","Leads","n"],["registrations","Regs","n"],["reg_per_lead","Reg/lead","pct"],["cancelled","Cancelled","n"],["visitors","Visitors","n"],["show_rate","Show-up","pct"],["cost_per_reg","₹/reg","inr"],["cost_per_visitor","₹/visitor","inr"],["opt_outs","Opt-outs","n"]];
+const COLS = [["campaign_name","Campaign"],["status","Status"],["spend","Spend","inr"],["share_spend","% spend","pct"],["impressions","Impr.","n"],["ctr","CTR","pct"],["leads","Leads","n"],["registrations","Regs","n"],["reg_per_lead","Reg/lead","pct"],["cancelled","Cancelled","n"],["visitors","Visitors","n"],["show_rate","Show-up (of regs)","pct"],["cost_per_reg","₹/reg","inr"],["cost_per_visitor","₹/visitor","inr"],["opt_outs","Opt-outs","n"]];
 function cell(v,f){ return f==="inr"?inr(v):f==="pct"?pct(v):f==="n"?fmt(v):esc(v??"–"); }
 function viewDiagnose(){
   const R = compute(S.asOf);
@@ -619,7 +619,7 @@ Event: ${S.model.ev.event_name||"the fest"}, ${S.model.ev.event_starts_at||""} t
 Rules:
 1. Get every number from the tools. Never estimate, remember or invent a figure. Use "calculate" for any arithmetic you report (sums, differences, ratios, percentages).
 2. If the tools cannot answer (a field doesn't exist, no data yet for that date, a question outside the data such as competitor fests or weather), say plainly what is missing and what would answer it. Do not guess.
-3. Definitions: verified visitor = distinct external person with an admitted + verified check-in; walk-ins have no campaign; campaign attribution = the registration's recorded source; reach/impressions/clicks are anonymous counts, not unique people; internal, staff and test people are excluded.
+3. Definitions: verified visitor = distinct external person with an admitted + verified check-in; walk-ins have no campaign; campaign attribution = the registration's recorded source; reach/impressions/clicks are anonymous counts, not unique people; internal, staff and test people are excluded. "Show-up rate" = registered visitors ÷ all registrations (any status); say "confirmed show-up" when you mean visitors ÷ confirmed registrations, and always say which one you use.
 4. Distinguish evidence from judgement. When recommending, cite the numbers and say how confident you are.
 5. To act, use propose_task or propose_campaign_update. They only show a card; nothing changes until the user clicks Confirm. Never say an action is done unless the user confirmed it.
 6. Strategy context (the team's plan, not data): fix show-up first (WhatsApp reconfirmation, waitlist promotion, abandoned forms), scale referrals, college club passes and ambassadors, cap Paid Social to a February burst, run Creators only late. Thresholds are in get_threshold_status.
@@ -665,7 +665,7 @@ function updateProv(){ const p = providerName(); const el = $("#prov"); el.textC
 function mdLite(s){ return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 function renderChat(){
   const box = $("#msgs");
-  if(!S.chat.length){ box.innerHTML = `<div class="msg sys">Ask anything about the campaign as of the dashboard date. The analyst answers only from this app's live data by running calculations, and proposes tasks you can confirm.${providerName()?"":"\n\nTo enable it: open this page inside Claude, or click ⚙ and add a Gemini API key."}</div>`; }
+  if(!S.chat.length){ box.innerHTML = `<div class="msg sys">Ask anything about the campaign as of the dashboard date. The analyst answers only from this app's live data by running calculations, and proposes tasks you can confirm.${providerName()?"":"\n\nThe AI connection isn't available right now. Click ⚙ to add your own Gemini API key; the dashboard works without it."}</div>`; }
   else box.innerHTML = S.chat.map((m,i) => m.role==="user" ? `<div class="msg user">${esc(m.content)}</div>` : m.role==="proposal" ? proposalCard(m.id) : `<div class="msg bot">${mdLite(m.content)}${m.used&&m.used.length?`<div class="tools">${m.verified?"✓ Numbers checked against the data · ":""}Computed with: ${esc([...new Set(m.used)].join(", "))}</div>`:""}</div>`).join("");
   box.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => resolveProposal(b.dataset.ok, true));
   box.querySelectorAll("[data-no]").forEach(b => b.onclick = () => resolveProposal(b.dataset.no, false));
@@ -691,7 +691,7 @@ async function send(text){
   text = (text||"").trim(); if(!text || S.busy) return;
   const p = providerName();
   S.chat.push({role:"user", content:text});
-  if(!p){ S.chat.push({role:"assistant", content:"The AI analyst isn't connected here. Open this page inside Claude, or click ⚙ and add a Gemini API key from Google AI Studio. All dashboard numbers still work without it."}); renderChat(); return; }
+  if(!p){ S.chat.push({role:"assistant", content:"The AI analyst isn't connected right now. Click ⚙ to add your own Gemini API key from Google AI Studio. All dashboard numbers still work without it."}); renderChat(); return; }
   S.busy = true; $("#send").disabled = true;
   const history = S.chat.filter(m => m.role==="user"||m.role==="assistant").slice(-12).map(m=>({role:m.role, content:m.content}));
   while(history.length && history[0].role!=="user") history.shift();
