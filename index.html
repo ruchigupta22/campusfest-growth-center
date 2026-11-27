@@ -133,7 +133,7 @@ function dedupe(arr, key){ const seen=new Set(), out=[]; let dup=0; for(const r 
 /* ================= State ================= */
 /* Deployment config: paste a Google AI Studio key here (restrict it to your site in Google Cloud) so visitors can use the analyst without their own key. */
 const DEFAULT_GEMINI_KEY = "";
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const DEFAULT_GEMINI_MODEL = "gemini-flash-lite-latest";
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const DEFAULT_THRESHOLDS = {
   C01:{scale:90, stop:150, label:"Ambassadors"},
@@ -266,10 +266,12 @@ function thresholdStatus(asOf){
     const last2 = wks.slice(-2), prev2 = wks.slice(-4,-2);
     const win = a => { const s = a.reduce((x,w)=>x+w.spend,0), r = a.reduce((x,w)=>x+w.regs,0); return {spend:s, regs:r, cpr: r ? s/r : (s>0 ? Infinity : null)}; };
     const recent = win(last2), before = win(prev2), lastWk = last2.length ? win(last2.slice(-1)) : {cpr:null};
+    const spendWeeks = wks.filter(w => w.spend > 0).length;
     let status="grey", label="Too early", action=`Wait until ${minR} registrations before judging.`;
     if(c.status === "Stopped"){ status="grey"; label="Stopped"; action="Campaign is stopped."; }
     else if(c.registrations >= minR && last2.length){
-      if(recent.cpr!=null && recent.cpr > t.stop && (before.cpr==null || before.cpr > t.scale)){ status="red"; label="Stop"; action=`Last two weeks cost ${isFinite(recent.cpr)?"₹"+Math.round(recent.cpr):"spend with no registrations"} per registration, above the ₹${t.stop} stop line: pause and move budget to the best green channel.`; }
+      if(recent.cpr!=null && recent.cpr > t.stop && spendWeeks < 4){ status="amber"; label="Ramp-up"; action=`Only ${spendWeeks} week(s) of spend so far, and new channels usually cost more at first. Keep going and re-check once it has 4 weeks of spend.`; }
+      else if(recent.cpr!=null && recent.cpr > t.stop && (before.cpr==null || before.cpr > t.scale)){ status="red"; label="Stop"; action=`Last two weeks cost ${isFinite(recent.cpr)?"₹"+Math.round(recent.cpr):"spend with no registrations"} per registration, above the ₹${t.stop} stop line: pause and move budget to the best green channel.`; }
       else if(recent.cpr!=null && recent.cpr > t.stop){ status="amber"; label="Watch"; action=`Last two weeks above ₹${t.stop} per registration after a good stretch. Change the message or audience; stop if it stays above.`; }
       else if(recent.cpr!=null && recent.cpr <= t.scale){ status="green"; label="Scale"; action=`Last two weeks at ₹${Math.round(recent.cpr)} per registration, within the ₹${t.scale} scale line: release held-back budget here.`; }
       else { status="amber"; label="Change"; action=`Between ₹${t.scale} and ₹${t.stop} per registration: test a new offer or creative before adding budget.`; }
@@ -424,7 +426,7 @@ function viewDecide(){
   const planned = S.model.campaigns.reduce((s,c)=> s + (+c.planned_budget||0), 0);
   const opts = R.campaignRows.map(c=>`<option value="${esc(c.campaign_id)}">${esc(c.campaign_name)}</option>`).join("");
   return `<div class="card"><h2>Scale / change / stop, as of ${esc(S.asOf)}</h2>
-  <div class="note" style="margin-top:0">Rule: judge a channel only after ${S.edits.settings.minRegs} registrations; compare the last two complete weeks combined (spend is posted in lumps, so single weeks are noisy); Stop when that window is above the stop line after a weak prior window. Thresholds are editable below.</div>
+  <div class="note" style="margin-top:0">Rule: judge a channel only after ${S.edits.settings.minRegs} registrations; compare the last two complete weeks combined (spend is posted in lumps, so single weeks are noisy); Stop when that window is above the stop line after a weak prior window. New channels get 4 weeks of spend to ramp up before a Stop. Thresholds are editable below.</div>
   <table class="t" style="margin-top:8px"><tr><th>Campaign</th><th>Signal</th><th>₹ per registration: last 2 wks · prior 2 wks</th><th class="n">Scale ≤</th><th class="n">Stop &gt;</th><th>Recommended action</th><th></th></tr>
   ${st.map(x=>`<tr><td>${esc(x.campaign_name)}</td><td><span class="pill ${x.status}">${esc(x.label)}</span></td><td>${(v=>v==null?"–":isFinite(v)?inr(v):"spend, 0 regs")(x.windows.last_2_weeks.cost_per_reg)} <span class="muted">(${fmt(x.windows.last_2_weeks.registrations)} regs)</span> · ${(v=>v==null?"–":isFinite(v)?inr(v):"spend, 0 regs")(x.windows.previous_2_weeks.cost_per_reg)}</td>
   <td class="n"><input data-th="${esc(x.campaign_id)}" data-k="scale" type="number" value="${x.rule.scale}" style="width:80px"></td><td class="n"><input data-th="${esc(x.campaign_id)}" data-k="stop" type="number" value="${x.rule.stop}" style="width:80px"></td>
@@ -628,13 +630,13 @@ function queueProposal(id){ S._newProposals = (S._newProposals||[]).concat(id); 
 /* ---------- Providers ---------- */
 function geminiSchema(s){ if(!s || typeof s!=="object") return s; const o = {}; for(const [k,v] of Object.entries(s)){ if(k==="type") o.type = String(v).toUpperCase(); else if(k==="properties"){ o.properties = {}; for(const [pk,pv] of Object.entries(v)) o.properties[pk] = geminiSchema(pv); } else if(k==="items") o.items = geminiSchema(v); else o[k] = v; } if(o.type==="OBJECT" && o.properties && !Object.keys(o.properties).length) delete o.properties; return o; }
 async function askGemini(history){
-  const model = S.gmodel || "gemini-2.5-flash";
+  const model = S.gmodel || "gemini-flash-lite-latest";
   const direct = !!S.gkey;
   const url = direct ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(S.gkey)}` : "api/chat";
   const contents = history.map(m => ({role: m.role==="user"?"user":"model", parts:[{text:m.content}]}));
   const decl = TOOLS.map(t => { const p = geminiSchema(t.schema); const d = {name:t.name, description:t.description}; if(p.properties) d.parameters = p; return d; });
   const used = [];
-  for(let step=0; step<8; step++){
+  for(let step=0; step<10; step++){
     const payload = {systemInstruction:{parts:[{text:systemPrompt()}]}, contents, tools:[{functionDeclarations:decl}], generationConfig:{temperature:0.2}};
     if(!direct) payload.model = model;
     const resp = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
