@@ -8,7 +8,8 @@ Goal: grow verified attendance at a Tier-1 college fest. City: **Bengaluru**.
 |---|---|
 | 3-slide strategy PDF | `Ruchi_Gupta_RISA_Growth_Strategy.pdf` |
 | Growth Center (dashboard, campaign and task manager, AI analyst) | `index.html` + `api/chat.js`, live at **https://campusfest-growth-center-eight.vercel.app** |
-| Target model (all formulas live) | Spreadsheet: Target Model, Audiences & City, Slide 2 Bets, Slide 3 Signals |
+| Target model (all formulas live) | `Target_Model_Ruchi_Gupta.xlsx`: tabs Target Model, Audiences & City, Slide 2 Bets, Slide 3 Signals |
+| Source code | https://github.com/ruchigupta22/campusfest-growth-center |
 
 ---
 
@@ -166,7 +167,7 @@ The app is a static `index.html` with the dataset embedded, plus one serverless 
 ## 9. Tools used
 
 - **Claude:** data analysis (Python and pandas), model building, research, deck, app code and this README. I reviewed the data cleaning, the assumptions and every number against the source data.
-- **Claude Sheets:** the live target model.
+- **Claude Sheets, exported to Excel:** the target model (`Target_Model_Ruchi_Gupta.xlsx`), with live formulas.
 - **Python and pandas:** analysis and data export.
 - **Plain HTML, CSS and JavaScript:** the app. No framework; charts are inline SVG.
 - **SheetJS (CDN):** only used when importing an .xlsx file.
