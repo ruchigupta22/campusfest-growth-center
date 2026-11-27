@@ -1,6 +1,7 @@
-// Paste your Google AI Studio (Gemini) API key between the quotes below, then commit.
-// Restrict the key to this site in Google Cloud > APIs & Services > Credentials.
+// Public client settings. Do NOT put API keys here: this file is served to every browser.
+// On Vercel the AI analyst uses the server function api/chat.js, which reads GEMINI_API_KEY
+// from the project's environment variables.
 window.GC_CONFIG = {
   geminiKey: "",
-  geminiModel: "gemini-2.5-flash"
+  geminiModel: "gemini-flash-lite-latest"
 };
