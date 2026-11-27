@@ -629,7 +629,7 @@ function queueProposal(id){ S._newProposals = (S._newProposals||[]).concat(id); 
 
 /* ---------- Providers ---------- */
 function geminiSchema(s){ if(!s || typeof s!=="object") return s; const o = {}; for(const [k,v] of Object.entries(s)){ if(k==="type") o.type = String(v).toUpperCase(); else if(k==="properties"){ o.properties = {}; for(const [pk,pv] of Object.entries(v)) o.properties[pk] = geminiSchema(pv); } else if(k==="items") o.items = geminiSchema(v); else o[k] = v; } if(o.type==="OBJECT" && o.properties && !Object.keys(o.properties).length) delete o.properties; return o; }
-async function askGemini(history){
+async function askGemini(history, toolData = []){
   const model = S.gmodel || "gemini-flash-lite-latest";
   const direct = !!S.gkey;
   const url = direct ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(S.gkey)}` : "api/chat";
@@ -643,20 +643,20 @@ async function askGemini(history){
     if(!resp.ok){ const t = await resp.text(); let m = t; try{ m = JSON.parse(t).error.message; }catch(_){} throw new Error(`Gemini error ${resp.status}: ${String(m).slice(0,220)}`); }
     const j = await resp.json(); const cand = j.candidates && j.candidates[0]; const parts = (cand && cand.content && cand.content.parts) || [];
     const calls = parts.filter(p => p.functionCall);
-    if(!calls.length) return {text: parts.map(p=>p.text||"").join("").trim() || "(no answer)", used};
+    if(!calls.length) return {text: parts.map(p=>p.text||"").join("").trim() || "(no answer)", used, toolData};
     contents.push({role:"model", parts});
-    const responses = calls.map(p => { const tool = TOOLS.find(t=>t.name===p.functionCall.name); used.push(p.functionCall.name); let r; try{ r = tool ? tool.run(p.functionCall.args||{}) : {error:"unknown tool"}; }catch(e){ r = {error:String(e.message||e)}; } return {functionResponse:{name:p.functionCall.name, response:{result:r}}}; });
+    const responses = calls.map(p => { const tool = TOOLS.find(t=>t.name===p.functionCall.name); used.push(p.functionCall.name); let r; try{ r = tool ? tool.run(p.functionCall.args||{}) : {error:"unknown tool"}; }catch(e){ r = {error:String(e.message||e)}; } toolData.push(r); return {functionResponse:{name:p.functionCall.name, response:{result:r}}}; });
     contents.push({role:"user", parts:responses});
   }
   return {text:"I couldn't finish the analysis in time. Try a narrower question.", used};
 }
-async function askClaude(history, onText){
+async function askClaude(history, onText, toolData = []){
   const used = [];
-  const tools = TOOLS.map(t => ({name:t.name, description:t.description, inputSchema:t.schema, execute: async (input) => { used.push(t.name); try{ return t.run(input||{}); }catch(e){ return {error:String(e.message||e)}; } }}));
+  const tools = TOOLS.map(t => ({name:t.name, description:t.description, inputSchema:t.schema, execute: async (input) => { used.push(t.name); let r; try{ r = t.run(input||{}); }catch(e){ r = {error:String(e.message||e)}; } toolData.push(r); return r; }}));
   const msgs = history.map(m => ({role:m.role, content:m.content}));
   msgs[0] = {role:"user", content: systemPrompt() + "\n\nUser question:\n" + msgs[0].content};
   const r = await S.sampleFn(msgs, {tools, modelTier:"default", cache:false, onText: onText ? (x => onText(x.text)) : undefined});
-  return {text:(r && r.text) || "(no answer)", used};
+  return {text:(r && r.text) || "(no answer)", used, toolData};
 }
 
 /* ---------- Chat UI ---------- */
@@ -666,7 +666,7 @@ function mdLite(s){ return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 function renderChat(){
   const box = $("#msgs");
   if(!S.chat.length){ box.innerHTML = `<div class="msg sys">Ask anything about the campaign as of the dashboard date. The analyst answers only from this app's live data by running calculations, and proposes tasks you can confirm.${providerName()?"":"\n\nTo enable it: open this page inside Claude, or click ⚙ and add a Gemini API key."}</div>`; }
-  else box.innerHTML = S.chat.map((m,i) => m.role==="user" ? `<div class="msg user">${esc(m.content)}</div>` : m.role==="proposal" ? proposalCard(m.id) : `<div class="msg bot">${mdLite(m.content)}${m.used&&m.used.length?`<div class="tools">Computed with: ${esc([...new Set(m.used)].join(", "))}</div>`:""}</div>`).join("");
+  else box.innerHTML = S.chat.map((m,i) => m.role==="user" ? `<div class="msg user">${esc(m.content)}</div>` : m.role==="proposal" ? proposalCard(m.id) : `<div class="msg bot">${mdLite(m.content)}${m.used&&m.used.length?`<div class="tools">${m.verified?"✓ Numbers checked against the data · ":""}Computed with: ${esc([...new Set(m.used)].join(", "))}</div>`:""}</div>`).join("");
   box.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => resolveProposal(b.dataset.ok, true));
   box.querySelectorAll("[data-no]").forEach(b => b.onclick = () => resolveProposal(b.dataset.no, false));
   box.scrollTop = box.scrollHeight;
@@ -698,13 +698,35 @@ async function send(text){
   const live = {role:"assistant", content:"Analysing…", used:[]}; S.chat.push(live); renderChat();
   S._newProposals = [];
   try{
-    const r = p==="Claude" ? await askClaude(history, t => { live.content = t || "Analysing…"; renderChat(); }) : await askGemini(history);
-    live.content = r.text; live.used = r.used;
+    const ask = (h, data) => p==="Claude" ? askClaude(h, t => { live.content = t || "Analysing…"; renderChat(); }, data) : askGemini(h, data);
+    const data = [];
+    let r = await ask(history, data);
+    let bad = unverifiedNumbers(r.text, data, text);
+    if(bad.length){
+      live.content = "Double-checking the numbers…"; renderChat();
+      const retry = history.concat([{role:"assistant", content:r.text}, {role:"user", content:`Fact-check failed: these numbers in your answer do not appear in any tool result: ${bad.join(", ")}. Call the tools again if needed and answer again using only numbers exactly as the tools returned them (or computed with the calculate tool). Do not mention this check.`}]);
+      const r2 = await ask(retry, data);
+      const bad2 = unverifiedNumbers(r2.text, data, text);
+      r = {text:r2.text, used:r.used.concat(r2.used), toolData:data};
+      bad = bad2;
+    }
+    live.content = r.text + (bad.length ? `\n\n⚠ Couldn't verify: ${bad.map(n=>Number.isInteger(n)?fmt(n):fmt(n,2)).join(", ")}. These don't match any computed value, so treat them with care.` : "");
+    live.used = r.used; live.verified = !bad.length;
   }catch(e){ live.content = (e && e.code==="rate_limited") ? "The AI is rate-limited right now. Try again in a minute." : (e && e.code==="not_granted") ? "Access to Claude wasn't granted for this page." : "Something went wrong: " + (e.message||e); }
   (S._newProposals||[]).forEach(id => S.chat.push({role:"proposal", id}));
   S.busy = false; $("#send").disabled = false;
   await DB.set("chat", {chat:S.chat, pending:S.pending}); renderChat();
 }
+/* ---------- Fact-check: every number in an answer must come from a tool result ---------- */
+function numbersIn(text){ const s = String(text).replace(/\b\d{4}-\d{2}-\d{2}\b/g," ").replace(/\b20[2-3]\d\b/g," "); return (s.match(/\d[\d,]*(?:\.\d+)?/g)||[]).map(x=>parseFloat(x.replace(/,/g,""))).filter(n=>isFinite(n) && n>=10); }
+function knownNumbers(toolData, question){
+  const set = new Set(); const add = n => { if(!isFinite(n)) return; [n, Math.round(n), Math.round(n*10)/10, Math.round(n*100)/100, Math.round(n*100), Math.round(n*1000)/10, Math.round(n/100)/10, Math.round(n/1000), Math.round(n/100)/10, Math.round(n/1e4)/10, Math.round(n/1e5*100)/100, Math.round(n/1e5*10)/10].forEach(v=>set.add(v)); };
+  const walk = v => { if(v==null) return; if(typeof v==="number") add(v); else if(typeof v==="string") numbersIn(v).forEach(add); else if(Array.isArray(v)) v.forEach(walk); else if(typeof v==="object") Object.values(v).forEach(walk); };
+  walk(toolData); numbersIn(question||"").forEach(add);
+  const S2 = compute(S.asOf); [S2.target && S2.target.marketing_budget_inr].forEach(add);
+  return set;
+}
+function unverifiedNumbers(text, toolData, question){ const k = knownNumbers(toolData, question); const bad = numbersIn(text).filter(n => !k.has(n) && !k.has(Math.round(n)) && !k.has(Math.round(n*10)/10)); return [...new Set(bad)]; }
 const CHIPS = ["Which campaign should we cut, and why?","Where is the biggest drop-off in the funnel?","Are we on track to hit the visitor target?","How did Paid Social's cost per registration change over time?","Create a task for the worst channel's owner","How many people downloaded the brochure but never registered?"];
 
 /* ================= Boot ================= */
