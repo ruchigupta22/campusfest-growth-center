@@ -92,7 +92,7 @@ svg text{font-family:inherit}
   <aside id="chat">
     <div class="chat-head"><b>AI Growth Analyst</b><span class="pill grey" id="prov">checking…</span><button class="small" id="btnSettings" title="Settings">⚙</button><button class="small" id="btnClear" title="Clear chat">Clear</button></div>
     <div id="settings" style="display:none;padding:10px 14px;border-bottom:1px solid var(--line)">
-      <div class="note" style="margin-top:0">Inside Claude, the analyst uses Claude automatically. Anywhere else, paste a Google AI Studio (Gemini) API key. It is stored only in this browser.</div>
+      <div class="note" style="margin-top:0">Inside Claude, the analyst uses Claude automatically. On the hosted site it uses the server-side Gemini connection. You can also paste your own Google AI Studio key; it is stored only in this browser.</div>
       <div class="form" style="margin-top:8px"><label>Gemini API key<input id="gkey" type="password" placeholder="AIza…"></label><label>Gemini model<input id="gmodel" placeholder="gemini-2.5-flash"></label></div>
       <div class="row" style="margin-top:8px"><button class="small primary" id="saveKey">Save</button></div>
     </div>
@@ -629,13 +629,16 @@ function queueProposal(id){ S._newProposals = (S._newProposals||[]).concat(id); 
 function geminiSchema(s){ if(!s || typeof s!=="object") return s; const o = {}; for(const [k,v] of Object.entries(s)){ if(k==="type") o.type = String(v).toUpperCase(); else if(k==="properties"){ o.properties = {}; for(const [pk,pv] of Object.entries(v)) o.properties[pk] = geminiSchema(pv); } else if(k==="items") o.items = geminiSchema(v); else o[k] = v; } if(o.type==="OBJECT" && o.properties && !Object.keys(o.properties).length) delete o.properties; return o; }
 async function askGemini(history){
   const model = S.gmodel || "gemini-2.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(S.gkey)}`;
+  const direct = !!S.gkey;
+  const url = direct ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(S.gkey)}` : "api/chat";
   const contents = history.map(m => ({role: m.role==="user"?"user":"model", parts:[{text:m.content}]}));
   const decl = TOOLS.map(t => { const p = geminiSchema(t.schema); const d = {name:t.name, description:t.description}; if(p.properties) d.parameters = p; return d; });
   const used = [];
   for(let step=0; step<8; step++){
-    const resp = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({systemInstruction:{parts:[{text:systemPrompt()}]}, contents, tools:[{functionDeclarations:decl}], generationConfig:{temperature:0.2}})});
-    if(!resp.ok){ const t = await resp.text(); throw new Error(`Gemini error ${resp.status}: ${t.slice(0,200)}`); }
+    const payload = {systemInstruction:{parts:[{text:systemPrompt()}]}, contents, tools:[{functionDeclarations:decl}], generationConfig:{temperature:0.2}};
+    if(!direct) payload.model = model;
+    const resp = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+    if(!resp.ok){ const t = await resp.text(); let m = t; try{ m = JSON.parse(t).error.message; }catch(_){} throw new Error(`Gemini error ${resp.status}: ${String(m).slice(0,220)}`); }
     const j = await resp.json(); const cand = j.candidates && j.candidates[0]; const parts = (cand && cand.content && cand.content.parts) || [];
     const calls = parts.filter(p => p.functionCall);
     if(!calls.length) return {text: parts.map(p=>p.text||"").join("").trim() || "(no answer)", used};
@@ -655,7 +658,7 @@ async function askClaude(history, onText){
 }
 
 /* ---------- Chat UI ---------- */
-function providerName(){ return S.sampleFn ? "Claude" : (S.gkey ? "Gemini" : null); }
+function providerName(){ return S.sampleFn ? "Claude" : (S.gkey ? "Gemini" : (S.proxy ? "Gemini (server)" : null)); }
 function updateProv(){ const p = providerName(); const el = $("#prov"); el.textContent = p ? `via ${p}` : "not connected"; el.className = "pill " + (p ? "green" : "amber"); }
 function mdLite(s){ return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 function renderChat(){
@@ -731,6 +734,7 @@ async function boot(){
   const cfg = window.GC_CONFIG || {}; const g = await DB.get("gemini"); S.gkey = (g && g.key) || cfg.geminiKey || DEFAULT_GEMINI_KEY; S.gmodel = (g && g.model) || cfg.geminiModel || DEFAULT_GEMINI_MODEL;
   if(window.innerWidth < 1100) $("#chat").classList.add("hidden");
   await load(); updateProv();
+  if(/^https?:/.test(location.protocol)){ try{ const pr = await fetch("api/chat", {method:"GET"}); if(pr.ok){ const pj = await pr.json(); if(pj && pj.ok){ S.proxy = true; updateProv(); renderChat(); } } }catch(e){} }
   const tryClaude = async () => { if(S.sampleFn || !(window.claude && typeof window.claude.use === "function")) return; try{ const s = await window.claude.use("sample"); if(s){ S.sampleFn = s; updateProv(); renderChat(); } }catch(e){} };
   tryClaude(); setTimeout(tryClaude, 1500); setTimeout(tryClaude, 5000);
 }

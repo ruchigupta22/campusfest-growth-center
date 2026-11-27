@@ -7,7 +7,7 @@ Goal: grow verified attendance at a Tier-1 college fest. City: **Bengaluru**.
 | Deliverable | Where |
 |---|---|
 | 3-slide strategy PDF | `Ruchi_Gupta_RISA_Growth_Strategy.pdf` |
-| Growth Center (dashboard, campaign and task manager, AI analyst) | `index.html`, deployed at: **[add your link]** |
+| Growth Center (dashboard, campaign and task manager, AI analyst) | `index.html` + `api/chat.js`, live at **https://campusfest-growth-center-eight.vercel.app** |
 | Target model (all formulas live) | Spreadsheet: Target Model, Audiences & City, Slide 2 Bets, Slide 3 Signals |
 
 ---
@@ -141,22 +141,23 @@ The rules that keep it honest:
 - **No invented numbers.** The system prompt forbids made-up figures and requires the analyst to say when the data can't answer.
 - **Follow-ups work.** Questions can refer back to earlier turns.
 
-**Which AI it uses.** Inside Claude it uses Claude automatically. On any other host it uses Gemini through a Google AI Studio key: set the key in `config.js` (a 5-line file next to `index.html`), or paste a key into ⚙ settings.
+**Which AI it uses.** Inside Claude it uses Claude automatically. On the hosted site it calls Gemini through a small serverless function, `api/chat.js`. The API key is stored only as a server environment variable, `GEMINI_API_KEY`, so it is never shipped to the browser or committed to the repo. A user can also paste their own key into ⚙ settings; it stays in their browser.
 
 ---
 
 ## 8. Setup
 
-The whole app is one static file, `index.html`, with the dataset embedded.
+The app is a static `index.html` with the dataset embedded, plus one serverless function, `api/chat.js`, for the AI analyst.
 
-- **GitHub Pages:** create a repo, upload `index.html`, `config.js` and this README, then go to Settings → Pages → deploy from the main branch.
-- **Vercel:** create a new project, upload the folder and deploy. No build step is needed.
-- **Locally:** open `index.html` in any browser.
+**Deploy on Vercel:**
+1. Import this GitHub repo at vercel.com/new. Set Framework preset to "Other"; no build step is needed.
+2. Add an environment variable: `GEMINI_API_KEY` = your Google AI Studio key.
+3. Click Deploy.
 
-**Enabling the chatbot for reviewers:**
-1. Get a free key at aistudio.google.com.
-2. In Google Cloud → Credentials, restrict the key to your site's domain.
-3. Paste it into `config.js` and commit.
+**Other ways to run it:**
+- **GitHub Pages, or opening `index.html` locally:** the dashboard works fully, but the AI analyst needs a key pasted into ⚙ settings, because there is no server function there.
+
+**Security:** the key never appears in the client code or the git history. GitHub secret scanning blocked an earlier attempt to commit it, which is why the key moved to the server.
 
 ---
 
@@ -181,4 +182,5 @@ The whole app is one static file, `index.html`, with the dataset embedded.
 - **Saving is per browser.** Edits live in each viewer's own browser, not on a shared server. A shared database such as Supabase would be the next step.
 - **Simple projection.** Before the event, the projection assumes the last 14 days' registration pace continues, with 0.69 visitors per registration and 125 walk-ins.
 - **Threshold signals use cost per registration only.** Show-up thresholds need check-in data, which exists only after the event.
-- **Inside Claude, two features don't work:** backup download (the viewer blocks file downloads) and Gemini (outside network calls are blocked there). Both work on a normal host.
+- **Inside Claude, backup download doesn't work** (the viewer blocks file downloads). It works on the hosted site.
+- **No rate limiting on the server function.** For a real launch, add per-IP rate limiting to `api/chat.js`.
