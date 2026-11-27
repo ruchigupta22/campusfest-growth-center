@@ -110,6 +110,7 @@ The resulting ranking:
 - **Review cycle:** every Monday.
 - **Minimum data:** don't judge a channel before it has 30 registrations.
 - **Measure:** cost per registration over the last two complete weeks combined. Spend is posted in lumps, so single weeks are noisy.
+- **Ramp-up rule:** a channel with fewer than 4 weeks of spend shows "Ramp-up" instead of "Stop". Without this rule, Student Referrals would have been flagged Stop on 1 March, yet it became the cheapest channel by late March.
 - **Threshold lines** come from last year's data. For example, Paid Social's ₹130 scale line is what it cost while it was working.
 - **Checkpoints** follow last year's registration pace: 22% of registrations by 16 Feb, 42% by 2 Mar, 69% by 23 Mar and 94% by 6 Apr.
 
@@ -140,6 +141,7 @@ The rules that keep it honest:
 - **Actions need confirmation.** A proposal only shows a card, and nothing changes until the user clicks **Confirm**.
 - **No invented numbers.** The system prompt forbids made-up figures and requires the analyst to say when the data can't answer.
 - **Follow-ups work.** Questions can refer back to earlier turns.
+- **Automatic fact-check.** After every answer, the app checks each number against the values the tools actually computed. If any number doesn't match, the AI is told which ones and must answer again. If it still can't, the answer shows a visible "couldn't verify" warning. Verified answers show "✓ Numbers checked against the data". This was added after testing caught the fast model copying a correct tool result wrongly.
 
 **Which AI it uses.** Inside Claude it uses Claude automatically. On the hosted site it calls Gemini through a small serverless function, `api/chat.js`. The API key is stored only as a server environment variable, `GEMINI_API_KEY`, so it is never shipped to the browser or committed to the repo. A user can also paste their own key into ⚙ settings; it stays in their browser.
 
@@ -168,7 +170,7 @@ The app is a static `index.html` with the dataset embedded, plus one serverless 
 - **Python and pandas:** analysis and data export.
 - **Plain HTML, CSS and JavaScript:** the app. No framework; charts are inline SVG.
 - **SheetJS (CDN):** only used when importing an .xlsx file.
-- **Gemini or Claude:** the analyst's AI.
+- **Gemini Flash-Lite (latest) or Claude:** the analyst's AI. Flash-Lite was chosen after testing: about 1 second per call, against 13–40 seconds for the larger Flash model, with accuracy protected by the fact-check.
 
 **Sources:** AISHE 2021-22, 2022-23 and 2023-24 (Ministry of Education); TomTom Traffic Index 2025; Namma Metro (Wikipedia and news, Nov 2026); fest dates from the PES, Presidency, ABBS and ISME listings.
 
